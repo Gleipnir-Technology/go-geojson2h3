@@ -172,7 +172,7 @@ func rectToH3(resolution int, rect *geojson.Rect) []h3.H3Index {
 func circleToH3(resolution int, circle *geojson.Circle) ([]h3.H3Index, error) {
 	poly := h3.GeoPolygon{}
 	poly.Geofence = make([]h3.GeoCoord, 0, circle.NumPoints())
-	polygon, ok := circle.Primative().(*geojson.Polygon)
+	polygon, ok := circle.Polygon().(*geojson.Polygon)
 	if !ok {
 		return nil, fmt.Errorf("expected geojson.Polygon, got %T", polygon)
 	}
