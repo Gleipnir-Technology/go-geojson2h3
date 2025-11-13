@@ -3,10 +3,10 @@ package main
 import (
 	"github.com/mmadfox/go-geojson2h3"
 	"github.com/tidwall/geojson"
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
-func rectToH3(res int) ([]h3.H3Index, error) {
+func rectToH3(res int) ([]h3.Cell, error) {
 	opts := &geojson.ParseOptions{
 		AllowRects: true,
 	}

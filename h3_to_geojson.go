@@ -6,23 +6,26 @@ import (
 
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
 // ToFeatureCollection converts a set of hexagons to a GeoJSON `FeatureCollection`
 // with the set outline(s). The feature's geometry type will be `Polygon`.
-func ToFeatureCollection(indexes []h3.H3Index) (*geojson.FeatureCollection, error) {
+func ToFeatureCollection(indexes []h3.Cell) (*geojson.FeatureCollection, error) {
 	if len(indexes) == 0 {
 		return nil, fmt.Errorf("uber h3 indexes are empty")
 	}
 	features := make([]geojson.Object, 0, len(indexes))
 	for _, index := range indexes {
-		boundary := h3.ToGeoBoundary(index)
+		boundary, err := index.Boundary()
+		if err != nil {
+			return nil, err
+		}
 		points := make([]geometry.Point, 0, 6)
 		for _, b := range boundary {
 			points = append(points, geometry.Point{
-				X: b.Longitude,
-				Y: b.Latitude,
+				X: b.Lng,
+				Y: b.Lat,
 			})
 		}
 		points = append(points, geometry.Point{
@@ -39,7 +42,7 @@ func ToFeatureCollection(indexes []h3.H3Index) (*geojson.FeatureCollection, erro
 	return geojson.NewFeatureCollection(features), nil
 }
 
-func toH3Props(index h3.H3Index) string {
-	res := strconv.Itoa(h3.Resolution(index))
-	return `{"h3index":"` + h3.ToString(index) + `", "h3resolution": ` + res + `}`
+func toH3Props(index h3.Cell) string {
+	res := strconv.Itoa(index.Resolution())
+	return `{"h3index":"` + index.String() + `", "h3resolution": ` + res + `}`
 }

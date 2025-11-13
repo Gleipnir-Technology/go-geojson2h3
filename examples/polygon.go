@@ -3,10 +3,10 @@ package main
 import (
 	"github.com/mmadfox/go-geojson2h3"
 	"github.com/tidwall/geojson"
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
-func polygonToH3(res int) ([]h3.H3Index, error) {
+func polygonToH3(res int) ([]h3.Cell, error) {
 	o, err := geojson.Parse(`{
     "type": "Polygon",
     "coordinates": [
@@ -38,7 +38,7 @@ func polygonToH3(res int) ([]h3.H3Index, error) {
 	return geojson2h3.ToH3(res, o)
 }
 
-func multiPolygonToH3(res int) ([]h3.H3Index, error) {
+func multiPolygonToH3(res int) ([]h3.Cell, error) {
 	o, err := geojson.Parse(`{
     "type": "MultiPolygon",
     "coordinates": [

@@ -5,13 +5,13 @@ import (
 
 	"github.com/mmadfox/go-geojson2h3"
 
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
 type dataSet struct {
 	typ string
 	res int
-	fn  func(res int) ([]h3.H3Index, error)
+	fn  func(res int) ([]h3.Cell, error)
 }
 
 func main() {

@@ -3,10 +3,10 @@ package main
 import (
 	"github.com/mmadfox/go-geojson2h3"
 	"github.com/tidwall/geojson"
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
-func lineToH3(res int) ([]h3.H3Index, error) {
+func lineToH3(res int) ([]h3.Cell, error) {
 	o, err := geojson.Parse(`{
     "type": "LineString",
     "coordinates": [
@@ -120,7 +120,7 @@ func lineToH3(res int) ([]h3.H3Index, error) {
 	return geojson2h3.ToH3(res, o)
 }
 
-func multiLineToH3(res int) ([]h3.H3Index, error) {
+func multiLineToH3(res int) ([]h3.Cell, error) {
 	o, err := geojson.Parse(`{
     "type": "MultiLineString",
     "coordinates": [

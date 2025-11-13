@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/geojson/geometry"
 
 	"github.com/tidwall/geojson"
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
 // ToH3 converts a GeoJSON objects to a list of hexagons with specified resolution.
@@ -25,7 +25,7 @@ import (
 // Note that conversion from GeoJSON
 // * is lossy; the resulting hexagon set only approximately describes the original
 // * shape, at a level of precision determined by the hexagon resolution.
-func ToH3(resolution int, o geojson.Object) (indexes []h3.H3Index, err error) {
+func ToH3(resolution int, o geojson.Object) (indexes []h3.Cell, err error) {
 	if o == nil {
 		return nil, fmt.Errorf("geojson.Object is nil")
 	}
@@ -36,7 +36,7 @@ func ToH3(resolution int, o geojson.Object) (indexes []h3.H3Index, err error) {
 
 	switch typ := o.(type) {
 	case *geojson.FeatureCollection:
-		set := make([][]h3.H3Index, 0)
+		set := make([][]h3.Cell, 0)
 		typ.ForEach(func(geom geojson.Object) bool {
 			feature, ok := geom.(*geojson.Feature)
 			if !ok {
@@ -52,7 +52,7 @@ func ToH3(resolution int, o geojson.Object) (indexes []h3.H3Index, err error) {
 		})
 		indexes = deDup(set)
 	case *geojson.GeometryCollection:
-		set := make([][]h3.H3Index, 0)
+		set := make([][]h3.Cell, 0)
 		typ.ForEach(func(geom geojson.Object) bool {
 			indexes, err = polyfill(resolution, geom)
 			if err != nil {
@@ -70,30 +70,33 @@ func ToH3(resolution int, o geojson.Object) (indexes []h3.H3Index, err error) {
 	return
 }
 
-func polyfill(resolution int, o geojson.Object) (indexes []h3.H3Index, err error) {
+func polyfill(resolution int, o geojson.Object) (indexes []h3.Cell, err error) {
 	switch typ := o.(type) {
 	case *geojson.MultiPoint:
-		set := make([][]h3.H3Index, 0)
+		set := make([][]h3.Cell, 0)
 		typ.ForEach(func(object geojson.Object) bool {
 			point, ok := object.(*geojson.Point)
 			if !ok {
 				return false
 			}
-			indexes := pointToH3(resolution, point)
+			indexes, err := pointToH3(resolution, point)
+			if err != nil {
+				return false
+			}
 			set = append(set, indexes)
 			return true
 		})
 		indexes = deDup(set)
 	case *geojson.Rect:
-		return rectToH3(resolution, typ), nil
+		return rectToH3(resolution, typ)
 	case *geojson.SimplePoint:
-		return simplePointToH3(resolution, typ), nil
+		return simplePointToH3(resolution, typ)
 	case *geojson.Point:
-		return pointToH3(resolution, typ), nil
+		return pointToH3(resolution, typ)
 	case *geojson.Circle:
 		return circleToH3(resolution, typ)
 	case *geojson.MultiLineString:
-		set := make([][]h3.H3Index, 0)
+		set := make([][]h3.Cell, 0)
 		typ.ForEach(func(geom geojson.Object) bool {
 			lineString, ok := geom.(*geojson.LineString)
 			if !ok {
@@ -112,11 +115,11 @@ func polyfill(resolution int, o geojson.Object) (indexes []h3.H3Index, err error
 		if err != nil {
 			return nil, err
 		}
-		indexes = deDup([][]h3.H3Index{indexes})
+		indexes = deDup([][]h3.Cell{indexes})
 	case *geojson.Polygon:
 		indexes, err = polygonToH3(resolution, typ)
 	case *geojson.MultiPolygon:
-		set := make([][]h3.H3Index, 0)
+		set := make([][]h3.Cell, 0)
 		typ.ForEach(func(geom geojson.Object) bool {
 			polygon, ok := geom.(*geojson.Polygon)
 			if !ok {
@@ -136,92 +139,99 @@ func polyfill(resolution int, o geojson.Object) (indexes []h3.H3Index, err error
 	return
 }
 
-func pointToH3(resolution int, point *geojson.Point) []h3.H3Index {
-	index := h3.FromGeo(h3.GeoCoord{
-		Latitude:  point.Center().Y,
-		Longitude: point.Center().X,
+func pointToH3(resolution int, point *geojson.Point) ([]h3.Cell, error) {
+	p, err := h3.LatLngToCell(h3.LatLng{
+		Lat:  point.Center().Y,
+		Lng: point.Center().X,
 	}, resolution)
-	return []h3.H3Index{index}
+	if err != nil {
+		return nil, err
+	}
+	return []h3.Cell{p}, nil
+	//return []h3.Cell{index}
 }
 
-func simplePointToH3(resolution int, point *geojson.SimplePoint) []h3.H3Index {
-	index := h3.FromGeo(h3.GeoCoord{
-		Latitude:  point.Center().Y,
-		Longitude: point.Center().X,
+func simplePointToH3(resolution int, point *geojson.SimplePoint) ([]h3.Cell, error) {
+	p, err := h3.LatLngToCell(h3.LatLng{
+		Lat:  point.Center().Y,
+		Lng: point.Center().X,
 	}, resolution)
-	return []h3.H3Index{index}
+	if err != nil {
+		return nil, err
+	}
+	return []h3.Cell{p}, nil
 }
 
-func rectToH3(resolution int, rect *geojson.Rect) []h3.H3Index {
+func rectToH3(resolution int, rect *geojson.Rect) ([]h3.Cell, error) {
 	poly := h3.GeoPolygon{}
-	poly.Geofence = make([]h3.GeoCoord, 0, rect.NumPoints())
+	poly.GeoLoop = make([]h3.LatLng, 0, rect.NumPoints())
 	for i := 0; i < rect.Base().NumPoints(); i++ {
 		point := rect.Base().PointAt(i)
-		poly.Geofence = append(poly.Geofence, h3.GeoCoord{
-			Latitude:  point.Y,
-			Longitude: point.X,
+		poly.GeoLoop = append(poly.GeoLoop, h3.LatLng{
+			Lat:  point.Y,
+			Lng: point.X,
 		})
 	}
-	indexes := h3.Polyfill(poly, resolution)
+	indexes, err := h3.PolygonToCells(poly, resolution)
 	if len(indexes) == 0 {
-		indexes = pointToH3(resolution, geojson.NewPoint(rect.Center()))
+		indexes, err = pointToH3(resolution, geojson.NewPoint(rect.Center()))
 	}
-	return indexes
+	return indexes, err
 }
 
-func circleToH3(resolution int, circle *geojson.Circle) ([]h3.H3Index, error) {
+func circleToH3(resolution int, circle *geojson.Circle) ([]h3.Cell, error) {
 	poly := h3.GeoPolygon{}
-	poly.Geofence = make([]h3.GeoCoord, 0, circle.NumPoints())
+	poly.GeoLoop = make([]h3.LatLng, 0, circle.NumPoints())
 	polygon, ok := circle.Polygon().(*geojson.Polygon)
 	if !ok {
 		return nil, fmt.Errorf("expected geojson.Polygon, got %T", polygon)
 	}
 	for i := 0; i < polygon.Base().Exterior.NumPoints(); i++ {
 		point := polygon.Base().Exterior.PointAt(i)
-		poly.Geofence = append(poly.Geofence, h3.GeoCoord{
-			Latitude:  point.Y,
-			Longitude: point.X,
+		poly.GeoLoop = append(poly.GeoLoop, h3.LatLng{
+			Lat:  point.Y,
+			Lng: point.X,
 		})
 	}
-	indexes := h3.Polyfill(poly, resolution)
+	indexes, err := h3.PolygonToCells(poly, resolution)
 	if len(indexes) == 0 {
-		indexes = pointToH3(resolution, geojson.NewPoint(circle.Center()))
+		indexes, err = pointToH3(resolution, geojson.NewPoint(circle.Center()))
 	}
-	return indexes, nil
+	return indexes, err
 }
 
-func polygonToH3(resolution int, polygon *geojson.Polygon) ([]h3.H3Index, error) {
+func polygonToH3(resolution int, polygon *geojson.Polygon) ([]h3.Cell, error) {
 	poly := h3.GeoPolygon{}
-	poly.Geofence = make([]h3.GeoCoord, 0, polygon.NumPoints())
+	poly.GeoLoop = make([]h3.LatLng, 0, polygon.NumPoints())
 	numHoles := len(polygon.Base().Holes)
 	if numHoles > 0 {
-		poly.Holes = make([][]h3.GeoCoord, numHoles)
+		poly.Holes = make([]h3.GeoLoop, numHoles)
 		for i := 0; i < numHoles; i++ {
 			hole := polygon.Base().Holes[i]
 			for j := 0; j < hole.NumPoints(); j++ {
 				point := hole.PointAt(j)
-				poly.Holes[i] = append(poly.Holes[i], h3.GeoCoord{
-					Latitude:  point.Y,
-					Longitude: point.X,
+				poly.Holes[i] = append(poly.Holes[i], h3.LatLng{
+					Lat:  point.Y,
+					Lng: point.X,
 				})
 			}
 		}
 	}
 	for i := 0; i < polygon.Base().Exterior.NumPoints(); i++ {
 		point := polygon.Base().Exterior.PointAt(i)
-		poly.Geofence = append(poly.Geofence, h3.GeoCoord{
-			Latitude:  point.Y,
-			Longitude: point.X,
+		poly.GeoLoop = append(poly.GeoLoop, h3.LatLng{
+			Lat:  point.Y,
+			Lng: point.X,
 		})
 	}
-	indexes := h3.Polyfill(poly, resolution)
+	indexes, err := h3.PolygonToCells(poly, resolution)
 	if len(indexes) == 0 {
-		indexes = pointToH3(resolution, geojson.NewPoint(polygon.Center()))
+		indexes, err = pointToH3(resolution, geojson.NewPoint(polygon.Center()))
 	}
-	return indexes, nil
+	return indexes, err
 }
 
-func lineStringToH3(resolution int, lineString *geojson.LineString) ([]h3.H3Index, error) {
+func lineStringToH3(resolution int, lineString *geojson.LineString) ([]h3.Cell, error) {
 	if lineString.Base().NumPoints() < 2 {
 		return nil, fmt.Errorf("got %d points, expected >= 2 points",
 			lineString.Base().NumPoints())
@@ -247,22 +257,25 @@ func lineStringToH3(resolution int, lineString *geojson.LineString) ([]h3.H3Inde
 			points = append(points, segment.B)
 		}
 	}
-	indexes := make([]h3.H3Index, 0, len(points))
+	indexes := make([]h3.Cell, 0, len(points))
 	for i := 0; i < len(points); i++ {
-		cellID := h3.FromGeo(h3.GeoCoord{
-			Latitude:  points[i].Y,
-			Longitude: points[i].X}, resolution)
+		cellID, err := h3.LatLngToCell(h3.LatLng{
+			Lat:  points[i].Y,
+			Lng: points[i].X}, resolution)
+			if err != nil {
+				return indexes, err
+			}
 		indexes = append(indexes, cellID)
 	}
 	return indexes, nil
 }
 
-func deDup(indexes [][]h3.H3Index) []h3.H3Index {
+func deDup(indexes [][]h3.Cell) []h3.Cell {
 	if len(indexes) == 0 {
-		return []h3.H3Index{}
+		return []h3.Cell{}
 	}
-	visits := make(map[h3.H3Index]struct{})
-	result := make([]h3.H3Index, 0)
+	visits := make(map[h3.Cell]struct{})
+	result := make([]h3.Cell, 0)
 	for i := 0; i < len(indexes); i++ {
 		set := indexes[i]
 		for j := 0; j < len(set); j++ {

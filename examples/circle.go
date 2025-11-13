@@ -3,10 +3,10 @@ package main
 import (
 	"github.com/mmadfox/go-geojson2h3"
 	"github.com/tidwall/geojson"
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
-func circleToH3(res int) ([]h3.H3Index, error) {
+func circleToH3(res int) ([]h3.Cell, error) {
 	o, err := geojson.Parse(`{
         "type": "Feature",
         "properties": {

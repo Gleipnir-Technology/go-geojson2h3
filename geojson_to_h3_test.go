@@ -10,7 +10,7 @@ import (
 
 	"github.com/tidwall/geojson"
 	"github.com/tidwall/geojson/geometry"
-	"github.com/uber/h3-go/v3"
+	"github.com/uber/h3-go/v4"
 )
 
 var debug bool = false
@@ -705,7 +705,7 @@ func TestMultiLineStringS1ToH3(t *testing.T) {
 	}
 }
 
-func writeIndexesToFile(t *testing.T, filename string, indexes []h3.H3Index) {
+func writeIndexesToFile(t *testing.T, filename string, indexes []h3.Cell) {
 	featureCollection, err := ToFeatureCollection(indexes)
 	if err != nil {
 		t.Fatal(err)
