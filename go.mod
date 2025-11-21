@@ -1,4 +1,4 @@
-module github.com/mmadfox/go-geojson2h3
+module github.com/Gleipnir-Technology/go-geojson2h3/v2
 
 go 1.22
 

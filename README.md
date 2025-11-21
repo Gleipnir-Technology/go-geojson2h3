@@ -1,8 +1,8 @@
 # go-geojson2h3
 
-[![Coverage Status](https://coveralls.io/repos/github/mmadfox/go-geojson2h3/badge.svg?branch=main&n=1)](https://coveralls.io/github/mmadfox/go-geojson2h3?branch=main&n=1)
-[![Documentation](https://godoc.org/github.com/mmadfox/go-geojson2h3?status.svg)](https://pkg.go.dev/github.com/mmadfox/go-geojson2h3)
-[![Go Report Card](https://goreportcard.com/badge/github.com/mmadfox/go-geojson2h3)](https://goreportcard.com/report/github.com/mmadfox/go-geojson2h3)
+[![Coverage Status](https://coveralls.io/repos/github/Gleipnir-Technology/go-geojson2h3/badge.svg?branch=main&n=1)](https://coveralls.io/github/Gleipnir-Technology/go-geojson2h3?branch=main&n=1)
+[![Documentation](https://godoc.org/github.com/Gleipnir-Technology/go-geojson2h3?status.svg)](https://pkg.go.dev/github.com/Gleipnir-Technology/go-geojson2h3)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Gleipnir-Technology/go-geojson2h3)](https://goreportcard.com/report/github.com/Gleipnir-Technology/go-geojson2h3)
 
 The `geojson2h3` library includes a set of utilities for conversion between GeoJSON Objects: 
 * Point, MultiPoint,
@@ -19,7 +19,7 @@ using:
 
 ## Installation
 ```shell
-$ go get github.com/mmadfox/go-geojson2h3
+$ go get github.com/Gleipnir-Technology/go-geojson2h3
 ```
 
 ## API
@@ -48,7 +48,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/mmadfox/go-geojson2h3"
+	"github.com/Gleipnir-Technology/go-geojson2h3"
 	"github.com/tidwall/geojson"
 	"github.com/uber/h3-go/v3"
 )
@@ -78,4 +78,4 @@ func main() {
 ```
 
 ## Contributing
-Pull requests and [Github issues](https://github.com/mmadfox/go-geojson2h3/issues) are welcome. Please include tests for new work, and keep the library test coverage at 90-100%. 
+Pull requests and [Github issues](https://github.com/Gleipnir-Technology/go-geojson2h3/issues) are welcome. Please include tests for new work, and keep the library test coverage at 90-100%. 
